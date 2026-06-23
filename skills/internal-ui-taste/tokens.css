@@ -1,0 +1,152 @@
+/* tokens.css — design foundation for an internal incident dashboard.
+ *
+ * Copy into your React app and import once (e.g. in main.tsx / index.css), then
+ * reference var(--…) everywhere instead of hardcoding values. This is the single
+ * highest-leverage fix for an "ugly internal tool": one source of truth for
+ * spacing, type, and the status palette so every component reads consistently.
+ *
+ * Zero dependencies. Plain CSS custom properties — works with CSS Modules, inline
+ * styles (var() in style={}), styled-components, or a plain stylesheet.
+ * Light theme by default; dark theme via [data-theme="dark"] on <html>.
+ */
+
+:root {
+  /* ---- Spacing scale (4px base — every margin/padding/gap snaps to these) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* ---- Type ---- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+  --text-xs: 12px;   /* meta, table dense */
+  --text-sm: 13px;   /* secondary */
+  --text-base: 14px; /* body / default UI */
+  --text-md: 16px;
+  --text-lg: 20px;   /* panel titles */
+  --text-xl: 24px;   /* page title */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-bold: 600;
+
+  /* ---- Neutral ramp (grey) — bg → surface → border → muted → text ---- */
+  --color-bg: #f7f8fa;        /* app background */
+  --color-surface: #ffffff;   /* panels, cards, tables */
+  --color-surface-2: #f0f2f5; /* hover rows, subtle fills */
+  --color-border: #e3e6ea;    /* subtle 1px dividers */
+  --color-border-strong: #cdd2d9;
+  --color-text-muted: #5c6571;
+  --color-text: #1b1f24;
+
+  /* ---- Accent (locked — links, primary buttons, active nav) ---- */
+  --color-accent: #2563eb;       /* calm blue — NOT purple-gradient AI slop */
+  --color-accent-hover: #1d4ed8;
+  --color-accent-soft: #e8f0fe;  /* tinted backgrounds */
+
+  /* ---- Semantic status (severity) — reuse EVERYWHERE: chips, rows, timeline ---- */
+  --color-critical: #d92d20;     /* sev1 */
+  --color-critical-soft: #fdecea;
+  --color-warning: #b25e00;      /* sev2 / needs attention */
+  --color-warning-soft: #fdf3e7;
+  --color-info: #2563eb;         /* sev3 / informational */
+  --color-info-soft: #e8f0fe;
+  --color-healthy: #1f8a4c;      /* ok / resolved */
+  --color-healthy-soft: #e7f5ec;
+
+  /* ---- Investigation states (match engine: confirmed/refuted/needs-data/open) ---- */
+  --color-confirmed: var(--color-healthy);
+  --color-refuted: var(--color-text-muted);
+  --color-needs-data: var(--color-warning);
+  --color-open: var(--color-info);
+
+  /* ---- Shape & elevation (keep ONE elevation level — avoid nested shadows) ---- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-pill: 999px;
+  --shadow-panel: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.04);
+  --focus-ring: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent);
+
+  /* ---- Density (ops cockpit = compact rows, scale-aligned padding) ---- */
+  --row-height: 30px;
+  --control-height: 32px;
+
+  /* ---- Motion (state-feedback only) ---- */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ---- Dark theme ---- */
+[data-theme="dark"] {
+  --color-bg: #0f1216;
+  --color-surface: #161a20;
+  --color-surface-2: #1d222a;
+  --color-border: #272d36;
+  --color-border-strong: #353c47;
+  --color-text-muted: #9aa4b1;
+  --color-text: #e6e9ee;
+  --color-accent: #4f8cff;
+  --color-accent-hover: #6ea0ff;
+  --color-accent-soft: #16243d;
+  --color-critical-soft: #2a1715;
+  --color-warning-soft: #2a2113;
+  --color-info-soft: #16243d;
+  --color-healthy-soft: #11241a;
+}
+
+/* ---- Reduced motion: kill all non-essential animation ---- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---- A few base resets so tokens actually take effect ---- */
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+:where(code, pre, .mono, .timestamp, .metric, .id) {
+  font-family: var(--font-mono);
+}
+
+/* Visible keyboard focus everywhere (accessibility AA) */
+:where(a, button, [role="button"], input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* ---- Example utility: a status chip keyed to the palette ----
+ * <span class="chip chip--needs-data">needs data</span>
+ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: 1.4;
+}
+.chip--critical   { color: var(--color-critical); background: var(--color-critical-soft); }
+.chip--warning,
+.chip--needs-data { color: var(--color-warning);  background: var(--color-warning-soft); }
+.chip--info,
+.chip--open       { color: var(--color-info);     background: var(--color-info-soft); }
+.chip--healthy,
+.chip--confirmed  { color: var(--color-healthy);  background: var(--color-healthy-soft); }
+.chip--refuted    { color: var(--color-refuted);  background: var(--color-surface-2); }

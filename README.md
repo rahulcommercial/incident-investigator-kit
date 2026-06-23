@@ -26,7 +26,7 @@ bounded loops). The model supplies judgement; the code supplies restraint.
 ## What's inside
 
 ```
-engine/            # 5 stdlib modules — the actual machinery
+engine/            # 6 stdlib modules — the actual machinery
   hypothesis.py    #   form / rank / branch / prune / confidence  (the brain)
   gates.py         #   evidence gate · gap marker · draft-only     (the restraint)
   loop_control.py  #   bounded termination · stall · coverage      (when to stop)

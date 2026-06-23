@@ -93,7 +93,7 @@ All three review/audit skills start by running the deterministic scanner so the 
 doesn't eyeball mechanical bugs:
 
 ```bash
-python -m engine.ui_scan src/        # 30+ React/FastAPI rules, exact file:line + fix
+python -m engine.ui_scan src/        # 30 React/FastAPI rules, exact file:line + fix
 python -m engine.ui_scan --list-rules
 ```
 

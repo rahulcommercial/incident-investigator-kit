@@ -22,7 +22,7 @@ can't catch reliably; let code find them:
 ```bash
 python -m engine.ui_scan <path-to-component-or-dir>
 ```
-It reports exact `file:line` findings for 30+ React/FastAPI rules (clickable
+It reports exact `file:line` findings for 30 React/FastAPI rules (clickable
 non-buttons, `length && 0` leaks, index-as-key, missing modal a11y, CORS
 wildcard+credentials, missing dark variants, plus cockpit-specific
 `status-color-only` and `list-no-pagination`) with a fix for each. Fold these into

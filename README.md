@@ -37,7 +37,11 @@ skills/            # drop-in agent skills (SKILL.md each)
   investigate/         run a disciplined investigation
   playbook-author/     turn a TSG/SOP into a deterministic playbook
   investigation-audit/ read-only: did the agent stay honest?
-  internal-ui-taste/   make the React dashboard sharp & dense (no-install, CSS-only)
+  internal-ui-taste/      make the React dashboard sharp & dense (no-install, CSS-only)
+  ui-design-review/       read-only critic: grade a view against internal-ui-taste
+  ui-accessibility-audit/ WCAG 2.2 AA keyboard/ARIA/contrast audit (no axe-core)
+  react-component-patterns/ composition, kill prop-soup, clean state architecture
+  react-performance/      windowing/pagination + render hygiene for big data views
 playbooks/         # generic starting playbooks: latency, availability, auth, data-freshness
 templates/         # blank playbook + DRAFT RCA templates
 CLAUDE.md          # how to adopt this in a PRIVATE repo (no egress, no deps)

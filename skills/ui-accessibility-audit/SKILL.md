@@ -18,6 +18,17 @@ Playwright, so it runs in a locked-down env.
 
 ## How to run the audit
 
+**Step 0 — run the static scanner for the mechanical a11y rules:**
+```bash
+python -m engine.ui_scan <path-to-component-or-dir>
+```
+It catches the regex-detectable failures exactly (`clickable-nonbutton`,
+`icon-button-no-label`, `img-no-alt`, `input-no-label`, `modal-no-a11y`,
+`dialog-no-label`, `nested-interactive`, `positive-tabindex`, `modal-no-escape`, …)
+with `file:line` and a fix. Take those as confirmed, then do the manual checks below
+— focus order, live regions, contrast-in-context, keyboard interaction of custom
+widgets — which a static scan can't verify.
+
 Read the target component(s) and check each item below. Report findings as
 `PASS / FAIL / N-A` with `file:line` and a concrete fix. Then apply the fixes
 incrementally (highest-severity first). Re-read to confirm.

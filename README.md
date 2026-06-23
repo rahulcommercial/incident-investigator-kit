@@ -32,6 +32,7 @@ engine/            # 5 stdlib modules — the actual machinery
   loop_control.py  #   bounded termination · stall · coverage      (when to stop)
   router.py        #   symptom -> query plan                       (no fake autonomy)
   timeline.py      #   raw query output -> correlation timeline
+  ui_scan.py       #   static UI/UX bug scanner (React + FastAPI)   (the UI skills' teeth)
   demo.py          #   full mock investigation — run it, see it work
 skills/            # drop-in agent skills (SKILL.md each)
   investigate/         run a disciplined investigation
@@ -68,6 +69,37 @@ that flags its one unverified claim for human sign-off.
 4. **No mutating actions.** Remediation is suggested; a human runs it.
 5. **The loop terminates for a reason.** Confirmed cause, exhausted hypotheses,
    step ceiling, or stall — never an open-ended spin.
+
+## Making the UI sharp (5 skills + a scanner)
+
+The kit also hardens the React + FastAPI dashboard the investigator lives in — all
+zero-install (plain React + CSS), tuned for a **data cockpit**, not a landing page.
+They work as a loop:
+
+```
+ui-design-review   →  internal-ui-taste  →  ui-accessibility-audit
+   (critique)           (apply fixes)          (verify operable)
+   read-only            edits + tokens.css      WCAG 2.2 AA, keyboard
+```
+
+- **ui-design-review** (read-only) grades a view against the taste rules + `tokens.css`.
+- **internal-ui-taste** applies the fixes; `tokens.css` is the copy-paste design
+  foundation (spacing/type scale, status palette matching the engine states).
+- **ui-accessibility-audit** verifies the result is keyboard-operable and AA-contrast.
+- **react-component-patterns** / **react-performance** keep it maintainable and fast
+  (composition over prop-soup; windowing/pagination for big query tables & log views).
+
+All three review/audit skills start by running the deterministic scanner so the model
+doesn't eyeball mechanical bugs:
+
+```bash
+python -m engine.ui_scan src/        # ~30 React/FastAPI rules, exact file:line + fix
+python -m engine.ui_scan --list-rules
+```
+
+> The scanner is vendored from the author's own
+> [ui-ux-doctor](https://github.com/rahulcommercial/ui-ux-doctor) — same
+> code-does-the-exact-work / model-does-the-judgement split as the investigation engine.
 
 ## Using it on your own incidents
 

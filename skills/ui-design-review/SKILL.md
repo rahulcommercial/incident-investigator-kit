@@ -17,8 +17,19 @@ if one is provided); no browser tooling required.
 
 ## How to review
 
-Read the target component(s), `tokens.css`, and nearby styles. Score each check
-`PASS / FAIL / N-A` with `file:line` and the specific problem. Rank findings by
+**Step 0 — run the deterministic scanner first.** Don't eyeball mechanical bugs you
+can't catch reliably; let code find them:
+```bash
+python -m engine.ui_scan <path-to-component-or-dir>
+```
+It reports exact `file:line` findings for ~30 React/FastAPI rules (clickable
+non-buttons, `length && 0` leaks, index-as-key, missing modal a11y, CORS
+wildcard+credentials, missing dark variants, …) with a fix for each. Fold these into
+your report as confirmed findings, then spend your judgement on the taste/context
+checks below that a scanner can't see.
+
+**Then** read the target component(s), `tokens.css`, and nearby styles. Score each
+check `PASS / FAIL / N-A` with `file:line` and the specific problem. Rank findings by
 severity. Hand the report back — do not rewrite the component yourself; route fixes
 to `internal-ui-taste`.
 

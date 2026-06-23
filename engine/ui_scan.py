@@ -106,6 +106,15 @@ RULES = {
     "hardcoded-theme-color": {"category": "theming", "severity": "info",
         "summary": "Hardcoded black/white color in an inline style.",
         "fix": "Use theme tokens / CSS variables (tokens.css) instead of literal #fff/#000."},
+    # Dashboard-specific (incident cockpit) -----------------------------------
+    "status-color-only": {"category": "accessibility", "severity": "warning",
+        "summary": "Empty status/severity indicator conveyed by color alone (no text/label).",
+        "fix": "Pair the color with a text label or aria-label (e.g. aria-label=\"critical\"), "
+               "so colorblind/screen-reader users can read the status. Reuse the tokens.css palette."},
+    "list-no-pagination": {"category": "performance", "severity": "info",
+        "summary": "Table/list renders mapped rows with no visible pagination/windowing.",
+        "fix": "For large datasets (query results, logs) paginate via FastAPI (?offset=&limit=) "
+               "or window the visible range. See the react-performance skill. (Fine for small fixed lists.)"},
     "cors-wildcard-credentials": {"category": "integration", "severity": "critical",
         "summary": "CORS allow_origins=['*'] together with allow_credentials=True.",
         "fix": "List explicit origins; browser rejects '*' + credentials so authed calls fail."},
@@ -155,6 +164,17 @@ _NON_INTERACTIVE = {"div", "span", "li", "p", "td", "tr", "ul", "ol", "section",
 _LIGHT_UTILS = ("bg-white", "bg-black", "text-white", "text-black",
                 "bg-gray-50", "bg-gray-100", "bg-slate-50", "bg-slate-100")
 _INPUT_SKIP_TYPES = {"hidden", "submit", "button", "reset", "image", "checkbox", "radio"}
+# className tokens that signal a status/severity indicator drawn as a colored swatch.
+_STATUS_CLS = re.compile(
+    r"\b(status|severity|sev[-_]?[123]|badge|dot|indicator|critical|warning|danger|"
+    r"success|healthy|bg-(?:red|green|amber|yellow|emerald|rose)|"
+    r"text-(?:red|green|amber|yellow|emerald|rose))", re.I)
+# Empty span/div/i (self-closing, or open immediately closed with only whitespace).
+_EMPTY_EL = re.compile(r"<(span|div|i)\b(" + _ATTRS + r")(?:/>|>\s*</\1>)", re.DOTALL)
+# Signs that a list/table already limits what it renders.
+_PAGINATION_HINTS = re.compile(
+    r"\b(slice\(|paginat|pageSize|page\b|\blimit\b|offset|virtual|useVirtual|"
+    r"windowed|loadMore|infinite|take\(|\.slice|rowsPerPage)", re.I)
 
 
 def _within_label(clean, pos):
@@ -286,6 +306,21 @@ def scan_jsx(text):
             mm = re.search(r"\b(modal|dialog)\b", clean, re.I)
             if mm:
                 findings.append(_mk("modal-no-escape", _lineno(starts, mm.start()), raw))
+
+    # --- status conveyed by color alone (empty colored badge/dot) ----------- #
+    for m in _EMPTY_EL.finditer(clean):
+        attrs = m.group(2) or ""
+        cls = _classname_literal(attrs)
+        if cls and _STATUS_CLS.search(cls) and not _has(attrs, "aria-label", "aria-labelledby", "title") \
+                and not re.search(r"role\s*=\s*['\"]img['\"]", attrs):
+            findings.append(_mk("status-color-only", _lineno(starts, m.start()), raw))
+
+    # --- table/list with no pagination or windowing (file-level, once) ------ #
+    has_table = "<table" in clean.lower()
+    has_row_map = re.search(r"\.map\([^)]*\)?\s*=>\s*\(?\s*<(?:tr\b|li\b|[A-Z]\w*Row\b)", clean)
+    if (has_table or has_row_map) and not _PAGINATION_HINTS.search(clean):
+        anchor = re.search(r"<table", clean, re.I) or has_row_map
+        findings.append(_mk("list-no-pagination", _lineno(starts, anchor.start()), raw))
 
     for n, line in enumerate(clean.splitlines(), 1):
         if re.search(r"\bconsole\.(log|debug)\s*\(", line):

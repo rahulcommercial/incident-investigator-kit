@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from .gates import Finding, draft_guard, mark_gap
+from .gates import Finding, draft_guard, falsification_gate, mark_gap
 from .hypothesis import (SUPPORT_STRONG, SUPPORT_WEAK, REFUTE_STRONG, Hypothesis,
-                         conclusion, rank)
+                         conclusion, next_action, rank)
 from .loop_control import LoopController
 from .router import bind, register, route, run_plan
 from .timeline import Event, build_timeline, suspect_triggers
@@ -32,12 +32,19 @@ def _fake_dep_latency():
     return {"upstream": "payments", "p99_ms": 190, "baseline_ms": 200}  # normal
 
 
+def _fake_p99_by_build():
+    # The falsification probe: did the OLD build spike too? It did not -> the
+    # deploy hypothesis survives the attempt to break it.
+    return {"v412": {"p99_ms": 840}, "v411": {"p99_ms": 205}}  # spike unique to v412
+
+
 def main() -> None:
     # 1. Wire the router (in production this binding lives in your private adapter).
     register("latency", ["p99_by_route", "deploy_timeline", "dependency_latency"])
     bind("p99_by_route", _fake_p99)
     bind("deploy_timeline", _fake_deploys)
     bind("dependency_latency", _fake_dep_latency)
+    bind("p99_by_build", _fake_p99_by_build)
 
     symptom = "p99 latency spike on /checkout, timeouts"
     print(f"SYMPTOM: {symptom}")
@@ -75,17 +82,38 @@ def main() -> None:
     pool[2].mark_needs_data("per-host CPU/steal-time for the checkout fleet")
     lc.tick(sum(len(h.evidence) for h in pool))
 
-    print("HYPOTHESIS RANKING (open, best first):")
+    # The deploy lead is now high-confidence but UNCHALLENGED -- it sits in
+    # NEEDS_FALSIFICATION, and conclusion() refuses to confirm it yet.
+    print("HYPOTHESIS RANKING (actionable, best first):")
     for h in rank(pool):
-        print(f"  [{h.confidence:.2f}] {h.statement}")
+        print(f"  [{h.confidence:.2f}] {h.status.value:19} {h.statement}")
+        print(f"        next: {next_action(h)}")
+    print("  conclusion before falsification:",
+          conclusion(pool) or "INSUFFICIENT EVIDENCE (top lead not yet attacked)")
+
+    # step: ATTACK the leading theory -- would the old build have spiked too?
+    builds = _fake_p99_by_build()
+    pool[0].challenge(
+        "queries.p99_by_build",
+        f"old build v411 p99 {builds['v411']['p99_ms']}ms (baseline) -- spike unique to v412",
+        survived=True,
+    )
+    lc.tick(sum(len(h.evidence) for h in pool))
+
     win = conclusion(pool)
-    print("\nSTOP REASON:", lc.stop_reason(len(rank(pool)), concluded=bool(win)), "\n")
+    print("\nAfter falsification -> conclusion:",
+          f"[{win.confidence:.0%}] {win.statement}" if win else "INSUFFICIENT EVIDENCE")
+    print("STOP REASON:", lc.stop_reason(len(rank(pool)), concluded=bool(win)), "\n")
 
     # 4. Emit a DRAFT RCA -- gated, gap-marked, sign-off required.
+    # The falsification gate refuses to let an unchallenged cause reach the draft.
+    if win:
+        falsification_gate(win.statement, win.falsification_attempts)
     body = "\n".join([
         f"Root cause (confidence {win.confidence:.0%}): {win.statement}." if win else "Root cause: <unconfirmed>.",
         "Trigger: checkout deploy v412 at 14:02:01 (queries.deploys), alert at 14:03:10 (queries.p99).",
         "Ruled out: upstream payments dependency -- p99 190ms, normal (queries.dependency_latency).",
+        "Survived falsification: old build v411 stayed at baseline (queries.p99_by_build) -- spike is unique to v412.",
         mark_gap("noisy_neighbour", "per-host CPU/steal-time for the checkout fleet"),
         "Suggested next step (NOT executed): roll back checkout to v411 and re-measure p99.",
     ])

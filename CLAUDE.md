@@ -58,10 +58,21 @@ The only bridge is a small adapter you write on your side. Nothing flows back he
 2. `router.classify` + `route` → ordered query plan (or `unknown` → playbook-author).
 3. Run bound queries → build `timeline` → inspect `suspect_triggers`.
 4. Form 2–4 `Hypothesis` objects → test highest-confidence first → branch/prune.
-5. Missing signal → `mark_gap`, never a guess.
-6. `LoopController` decides when to stop; report the stop reason.
-7. Emit a **DRAFT** RCA via `gates.draft_guard` → human signs off → human (not the
-   agent) runs any remediation.
+5. **Falsify before you conclude.** When the leading hypothesis reaches high
+   confidence it enters `NEEDS_FALSIFICATION` — it is *not* a conclusion yet.
+   Call `h.challenge(source, detail, survived=...)`: deliberately run the query
+   that would *disprove* it (e.g. "did the previous build spike too?"). Only a
+   hypothesis that has survived ≥1 challenge can become `CONFIRMED`. This is the
+   single guard against the most common failure — confidently confirming the first
+   guess. `next_action(h)` tells you whether the top lead needs evidence or a challenge.
+6. Missing signal → `mark_gap`, never a guess.
+7. `LoopController` decides when to stop. On a **stall** it does not quit
+   immediately — `stall_directive()` forces one reflexion pivot (name the untested
+   assumption, form one fresh hypothesis); call `record_reflexion()` after. Then it
+   stops. Report the stop reason.
+8. Emit a **DRAFT** RCA via `gates.draft_guard`, after `gates.falsification_gate(
+   cause, attempts)` confirms the cause was actually attacked → human signs off →
+   human (not the agent) runs any remediation.
 
 ## Verifying the wiring
 

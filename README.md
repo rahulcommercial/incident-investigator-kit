@@ -15,21 +15,30 @@ Most "AI incident bots" do one of two things badly:
 - **Need a heavy stack** — cloud SDKs, vector DBs, API keys, a Node runtime.
 
 This kit takes the **hypothesis-driven investigation loop** (form → rank → gather
-evidence → branch/prune → confidence-scored conclusion) and wraps it in
-**determinism gates** (no ungrounded claims, explicit data gaps, draft-only output,
-bounded loops). The model supplies judgement; the code supplies restraint.
+evidence → **falsify** → branch/prune → confidence-scored conclusion) and wraps it in
+**determinism gates** (no ungrounded claims, no *unchallenged* causes, explicit data
+gaps, draft-only output, bounded loops). The model supplies judgement; the code
+supplies restraint.
 
 > Synthesis of two ideas the source projects had separately and neither had
 > together, dependency-free: the hypothesis loop (à la RunbookAI) and SOP-to-work
 > determinism gates (à la agentic-sop-to-work).
 
+Research on LLM root-cause agents finds three recurring failures — they **stall**,
+fall to **confirmation bias**, and **confuse** symptom with cause — and *more
+iteration makes it worse*, not better. So the loop is built to counter exactly
+those: every claim is evidence-grounded, the leading hypothesis must survive a
+deliberate attempt to **disprove** it before it can be confirmed, and a stalled loop
+is forced through one **reflexion pivot** rather than spinning. See
+`hypothesis.challenge`, `gates.falsification_gate`, and `loop_control.stall_directive`.
+
 ## What's inside
 
 ```
 engine/            # 6 stdlib modules — the actual machinery
-  hypothesis.py    #   form / rank / branch / prune / confidence  (the brain)
-  gates.py         #   evidence gate · gap marker · draft-only     (the restraint)
-  loop_control.py  #   bounded termination · stall · coverage      (when to stop)
+  hypothesis.py    #   form / rank / challenge(falsify) / prune / confidence  (the brain)
+  gates.py         #   evidence gate · falsification gate · gap marker · draft-only  (restraint)
+  loop_control.py  #   bounded termination · stall · reflexion pivot  (when to stop)
   router.py        #   symptom -> query plan                       (no fake autonomy)
   timeline.py      #   raw query output -> correlation timeline
   ui_scan.py       #   static UI/UX bug scanner (React + FastAPI)   (the UI skills' teeth)
@@ -55,20 +64,25 @@ python -m engine.demo
 ```
 
 You'll watch it route a latency symptom to a query plan, build a timeline, spot the
-suspect deploy, test three competing hypotheses, confirm one with cited evidence,
-refuse to guess about a missing host metric (`<NEEDS-DATA>`), and emit a DRAFT RCA
-that flags its one unverified claim for human sign-off.
+suspect deploy, test three competing hypotheses, **refuse to confirm the leading one
+until it survives an attempt to disprove it**, refuse to guess about a missing host
+metric (`<NEEDS-DATA>`), and emit a DRAFT RCA that flags its one unverified claim for
+human sign-off.
 
-## The five rules it enforces in code (not vibes)
+## The six rules it enforces in code (not vibes)
 
 1. **No ungrounded claims.** A conclusion with no cited source is rejected by the
    `evidence_gate`. Period.
-2. **Gaps are marked, not filled.** Missing data becomes a `<NEEDS-DATA>` marker, a
+2. **No unchallenged causes.** A high-confidence hypothesis sits in
+   `NEEDS_FALSIFICATION` until it survives a deliberate attempt to disprove it
+   (`challenge`); `falsification_gate` blocks any cause that was never attacked.
+   This is the guard against confirmation bias — the #1 RCA failure mode.
+3. **Gaps are marked, not filled.** Missing data becomes a `<NEEDS-DATA>` marker, a
    better answer than a confident fabrication.
-3. **Output is always a DRAFT.** No "final" — only a draft a human promotes.
-4. **No mutating actions.** Remediation is suggested; a human runs it.
-5. **The loop terminates for a reason.** Confirmed cause, exhausted hypotheses,
-   step ceiling, or stall — never an open-ended spin.
+4. **Output is always a DRAFT.** No "final" — only a draft a human promotes.
+5. **No mutating actions.** Remediation is suggested; a human runs it.
+6. **The loop terminates for a reason.** Confirmed cause, exhausted hypotheses,
+   step ceiling, or stall (after one forced reflexion pivot) — never an open-ended spin.
 
 ## Making the UI sharp (5 skills + a scanner)
 

@@ -3,11 +3,15 @@
 The model is good at reasoning and bad at restraint. These gates are the
 restraint, enforced in code so they cannot be argued away mid-conversation:
 
-  evidence_gate  -- a conclusion with no cited source is rejected outright.
-  mark_gap       -- the honest "I don't have this" marker (RunbookAI's NEEDS_DATA,
-                    the SOP kit's 待補). Gaps are surfaced, never silently filled.
-  draft_guard    -- every external-facing output is a DRAFT and must list its
-                    unverified claims, so a human signs off before anyone acts.
+  evidence_gate       -- a conclusion with no cited source is rejected outright.
+  falsification_gate  -- a root cause that was never attacked is rejected. Stops the
+                         #1 RCA failure mode (confirmation bias) where the agent
+                         confidently confirms its first guess without trying to
+                         disprove it. Pairs with hypothesis.Hypothesis.challenge().
+  mark_gap            -- the honest "I don't have this" marker (RunbookAI's NEEDS_DATA,
+                         the SOP kit's 待補). Gaps are surfaced, never silently filled.
+  draft_guard         -- every external-facing output is a DRAFT and must list its
+                         unverified claims, so a human signs off before anyone acts.
 
 Pure standard library. Python 3.8+.
 """
@@ -44,6 +48,25 @@ def evidence_gate(finding: Finding) -> Finding:
             f"Attach a source (query name, TSG section, or log line) or mark_gap()."
         )
     return finding
+
+
+def falsification_gate(claim: str, falsification_attempts: int) -> None:
+    """Block a root-cause conclusion that was never actively challenged.
+
+    Pass the leading hypothesis's `falsification_attempts` count. Zero attempts
+    means the agent reached a conclusion without ever trying to disprove it -- the
+    classic confirmation-bias trap where iterating only *reinforces* the first
+    guess. Surviving a real attempt to break it is what earns the right to confirm.
+
+    Decoupled from the hypothesis module on purpose (gates take primitives): call
+    it with `conclusion.falsification_attempts` just before you emit the draft.
+    """
+    if falsification_attempts < 1:
+        raise GateError(
+            f"UNFALSIFIED root cause rejected: {claim!r}. "
+            f"Actively try to DISPROVE it (Hypothesis.challenge(...)) before "
+            f"concluding -- an unchallenged cause is a guess, not a finding."
+        )
 
 
 def mark_gap(field_name: str, what_is_needed: str) -> str:
@@ -105,5 +128,11 @@ if __name__ == "__main__":
 
     try:
         evidence_gate(Finding("it was probably DNS"))
+    except GateError as e:
+        print("\nGATE FIRED ->", e)
+
+    falsification_gate("deploy v412 caused it", falsification_attempts=1)  # passes
+    try:
+        falsification_gate("deploy v412 caused it", falsification_attempts=0)
     except GateError as e:
         print("\nGATE FIRED ->", e)
